@@ -1,0 +1,96 @@
+import requests, re
+from urllib.parse import urljoin
+from bs4 import BeautifulSoup
+import pandas as pd
+
+url = "http://www.espn.com/mma/fighters?search={}"
+
+titleList = []
+countryList = []
+stanceList = []
+reachList = []
+ageList = []
+weightClassList = []
+trainingCenterList = []
+winsList = []
+losesList =[]
+drawsList = []
+tkosList = []
+subsList = []
+
+#i believe this is what takes us from one page to another, but not 100% sure yet
+for linknum in [chr(i) for i in range(ord('a'),ord('z')+1)]:
+    r = requests.get(url.format(linknum))
+    soup = BeautifulSoup(r.text,'html.parser')
+    #a[href*=] gets all anchors a that contain whatever the href*=''
+    for links in soup.select(".tablehead a[href*='id']"):
+        #urljoin just takes a url and another string and combines them to create a new url
+        res = requests.get(urljoin(url,links.get("href")))
+        sauce = BeautifulSoup(res.text,"lxml")
+        try:
+            title = sauce.find('h1').text
+        except AttributeError: title = ""
+        try:
+            country = sauce.find('span',text='Country').next_sibling
+        except AttributeError: country = ""
+        try:
+            stance = sauce.find('span',text='Stance').next_sibling
+        except AttributeError: stance = ""
+        try:
+            reach = sauce.find('span',text='Reach').next_sibling
+        except AttributeError: reach = ""
+        try:
+            age = sauce.find('span',text='Birth Date').next_sibling[-3:-1]
+        except AttributeError: age = ""
+        try:
+            weightClass = sauce.find('li',attrs={'class':['first', 'first last']}).text
+        except AttributeError: weightClass = ""
+        try:
+            trainingCenter = sauce.find('li',attrs={'class':'last'}).text
+        except AttributeError: trainingCenter = ""
+        try:
+            wins = sauce.find(attrs={'class':'header-stats'})('td')[0].text
+        except AttributeError: wins = ""
+        try:
+            loses = sauce.find('table',attrs={'class':'header-stats'})('td')[1].text
+        except AttributeError: loses = ""
+        try:
+            draws = sauce.find('table',attrs={'class':'header-stats'})('td')[2].text
+        except AttributeError: draws = ""
+        try:
+            tkos = sauce.find_all('table',attrs={'class':'header-stats'})[1]('td')[0].text
+        except AttributeError: tkos = ""
+        try:
+            subs = sauce.find_all('table',attrs={'class':'header-stats'})[1]('td')[1].text
+        except AttributeError: subs = ""
+        
+        titleList.append(title)
+        countryList.append(country)
+        stanceList.append(stance)
+        reachList.append(reach)
+        ageList.append(age)
+        weightClassList.append(weightClass)
+        trainingCenterList.append(trainingCenter)
+        winsList.append(wins)
+        losesList.append(loses)
+        drawsList.append(draws)
+        tkosList.append(tkos)
+        subsList.append(subs)
+        
+        print(title, wins)
+        
+df = pd.DataFrame()
+df['title'] = titleList
+df['country'] = countryList
+df['stance'] = stanceList
+df['reach'] = reachList
+df['age'] = ageList
+df['weightClass'] = weightClassList
+df['trainingCenter']= trainingCenterList
+df['wins'] = winsList
+df['loses'] = losesList
+df['draws'] = drawsList
+df['tkos'] = tkosList
+df['subs'] = subsList
+
+df.to_csv('MMA Fighters.csv', index=False ,encoding='utf-8')
